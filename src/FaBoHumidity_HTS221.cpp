@@ -1,8 +1,12 @@
-#include "hts221.h"
+#include "FaBoHumidity_HTS221.h"
 
-bool hts221::searchDevice()
+FaBoHumidity_HTS221::FaBoHumidity_HTS221()
 {
-  Serial.begin(115200);
+    Wire.begin();
+}
+
+bool FaBoHumidity_HTS221::searchDevice()
+{
   byte device = 0x00;
   readI2c(HTS221_WHO_AM_I, 1, &device);
 
@@ -13,34 +17,33 @@ bool hts221::searchDevice()
   }
 }
 
-void hts221::powerOn()
+void FaBoHumidity_HTS221::powerOn()
 {
   int CTRL_REG1 = HTS221_PD_ON;
   CTRL_REG1 |= HTS221_ODR_1KHZ;
   writeI2c(HTS221_CTRL_REG1, CTRL_REG1);
-  Serial.println("PowerOn");
 
   bool available = false;
   while(!available){
     byte tmp;
     readI2c(HTS221_STATUS_REG, 1, &tmp);
      if((tmp & 0b1) != 0b1){
-       Serial.println("Temp not use");
+       // Temp not use
      }else if((tmp & 0b10) != 0b10){
-       Serial.println("Humidity not use");
+       // Humidity not use
      } else {
         available = true;
      }
   }
 }
 
-void hts221::configuration()
+void FaBoHumidity_HTS221::configuration()
 {
    int AV_CONF = HTS221_AVGT_256>>3 | HTS221_AVGH_512;
    writeI2c(HTS221_AV_CONF, AV_CONF);
 }
 
-int hts221::getHumidity()
+int FaBoHumidity_HTS221::getHumidity()
 {
   uint16_t H0_T0_out, H1_T0_out, H_T_out;
   uint16_t H0_rh, H1_rh;
@@ -83,7 +86,7 @@ int hts221::getHumidity()
   return humidity;
 }
 
-int hts221::getTemperature()
+int FaBoHumidity_HTS221::getTemperature()
 {
   int16_t T0_out, T1_out, T_out, T0_degC_x8_u16, T1_degC_x8_u16;
   int16_t T0_degC, T1_degC;
@@ -126,31 +129,27 @@ int hts221::getTemperature()
 
 
 // I2Cへの書き込み
-void hts221::writeI2c(byte register_addr, byte value) {
-  Wire.beginTransmission(HTS221_SLAVE_ADDRESS);  
-  Wire.write(register_addr);         
-  Wire.write(value);                 
-  Wire.endTransmission();        
+void FaBoHumidity_HTS221::writeI2c(byte register_addr, byte value) {
+  Wire.beginTransmission(HTS221_SLAVE_ADDRESS);
+  Wire.write(register_addr);
+  Wire.write(value);
+  Wire.endTransmission();
 }
 
 // I2Cへの読み込み
-void hts221::readI2c(byte register_addr, int num, byte *buf) {
-  Wire.beginTransmission(HTS221_SLAVE_ADDRESS); 
-  Wire.write(register_addr);           
-  Wire.endTransmission(false);         
+void FaBoHumidity_HTS221::readI2c(byte register_addr, int num, byte *buf) {
+  Wire.beginTransmission(HTS221_SLAVE_ADDRESS);
+  Wire.write(register_addr);
+  Wire.endTransmission(false);
 
-  //Wire.beginTransmission(DEVICE_ADDR); 
-  Wire.requestFrom(HTS221_SLAVE_ADDRESS, num);  
+  //Wire.beginTransmission(DEVICE_ADDR);
+  Wire.requestFrom(HTS221_SLAVE_ADDRESS, num);
 
   int i = 0;
   while (Wire.available())
   {
-    buf[i] = Wire.read(); 
-    i++;   
+    buf[i] = Wire.read();
+    i++;
   }
-  //Wire.endTransmission();         
+  //Wire.endTransmission();
 }
-
-
-hts221 faboHumidity;
-

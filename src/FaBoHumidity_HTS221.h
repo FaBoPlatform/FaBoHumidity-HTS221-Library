@@ -1,5 +1,8 @@
-#include "Arduino.h"
-#include "Wire.h"
+#ifndef FABOHUMIDITY_HTS221_H
+#define FABOHUMIDITY_HTS221_H
+
+#include <Arduino.h>
+#include <Wire.h>
 
 #define HTS221_WHO_AM_I 0x0F
 #define HTS221_SLAVE_ADDRESS 0x5F
@@ -40,17 +43,17 @@
 #define HTS221_H1_T0_OUT_L 0x3A
 #define HTS221_H1_T0_OUT_H 0x3B
 
-class hts221
-{
-public:
-  int getTemperature(void);
-  int getHumidity(void);
-  void configuration(void);
-  void powerOn(void);
-  bool searchDevice(void);
-private:
-  void readI2c(byte register_addr, int num, byte *buf);
-  void writeI2c(byte register_addr, byte value);
+class FaBoHumidity_HTS221 {
+  public:
+    FaBoHumidity_HTS221();
+    int getTemperature(void);
+    int getHumidity(void);
+    void configuration(void);
+    void powerOn(void);
+    bool searchDevice(void);
+  private:
+    void readI2c(byte register_addr, int num, byte *buf);
+    void writeI2c(byte register_addr, byte value);
 };
 
-extern hts221 faboHumidity;
+#endif // FABOHUMIDITY_HTS221_H

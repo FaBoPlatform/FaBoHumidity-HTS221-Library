@@ -5,27 +5,29 @@
 //
 
 #include <Wire.h>
-#include "fabo-hts221.h"
+#include <FaBoHumidity_HTS221.h>
+
+FaBoHumidity_HTS221 fabo_hts221;
 
 void setup()
 {
-  Serial.begin(115200); // シリアルの開始デバック用
+  Serial.begin(9600); // シリアルの開始デバック用
    
   Serial.println("Checking I2C device...");
   
-  if(faboHumidity.SearchDevice()){
+  if(fabo_hts221.searchDevice()){
     Serial.println("I am HTS221");
-    faboHumidity.configuration();
-    faboHumidity.powerOn();
+    fabo_hts221.configuration();
+    fabo_hts221.powerOn();
   }
 }
 
 void loop()
 { 
-  double temp = faboHumidity.getTemperature()/10;
-  double humidity = faboHumidity.getHumidity()/10;
+  double temp = fabo_hts221.getTemperature()/10;
+  double humidity = fabo_hts221.getHumidity()/10;
 
-  Serial.println(temp);
+  Serial.print(temp);
   Serial.println(" C");
   Serial.print(humidity);
   Serial.println(" %");

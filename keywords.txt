@@ -1,0 +1,23 @@
+#######################################
+# Syntax Coloring Map For FaBoHumidity-HTS221-Library
+####################################### 
+
+#######################################
+# Class (KEYWORD1)
+#######################################
+
+FaBoHumidity_HTS221	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################	
+
+getTemperature	KEYWORD2
+getHumidity	KEYWORD2
+configuration	KEYWORD2
+powerOn	KEYWORD2
+searchDevice	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
