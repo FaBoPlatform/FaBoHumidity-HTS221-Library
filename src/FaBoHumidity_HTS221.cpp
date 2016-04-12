@@ -1,155 +1,133 @@
+/*************************************************** 
+ This is a library for the FaBo Humidity I2C Brick.
+
+  http://fabo.io/208.html
+
+ author:FaBo<info@fabo.io>
+ maintainer:Akira Sasaki<akira@fabo.io>
+
+ Released under APACHE LICENSE, VERSION 2.0
+  http://www.apache.org/licenses/
+ ****************************************************/
+
 #include "FaBoHumidity_HTS221.h"
 
-FaBoHumidity_HTS221::FaBoHumidity_HTS221()
-{
-    Wire.begin();
+FaBoHumidity_HTS221::FaBoHumidity_HTS221(uint8_t addr) {
+  _i2caddr = addr;
+  Wire.begin();
 }
 
-bool FaBoHumidity_HTS221::searchDevice()
-{
-  byte device = 0x00;
-  readI2c(HTS221_WHO_AM_I, 1, &device);
-
-  if(device == HTS221_DEVICE){
-      return true;
-  } else{
-      return false;
+bool FaBoHumidity_HTS221::begin() {
+  // まとめて初期化
+  if ( checkDevice() ) {
+    powerOn();
+    configDevice();
+    readCoef();
+    return true;
+  } else {
+    return false;
   }
 }
 
-void FaBoHumidity_HTS221::powerOn()
-{
-  int CTRL_REG1 = HTS221_PD_ON;
-  CTRL_REG1 |= HTS221_ODR_1KHZ;
-  writeI2c(HTS221_CTRL_REG1, CTRL_REG1);
-
-  bool available = false;
-  while(!available){
-    byte tmp;
-    readI2c(HTS221_STATUS_REG, 1, &tmp);
-     if((tmp & 0b1) != 0b1){
-       // Temp not use
-     }else if((tmp & 0b10) != 0b10){
-       // Humidity not use
-     } else {
-        available = true;
-     }
+bool FaBoHumidity_HTS221::checkDevice() {
+  // デバイスが接続されているか確認
+  if ( readI2c(HTS221_WHO_AM_I) == HTS221_DEVICE_ID ) {
+    return true;
+  } else {
+    return false;
   }
 }
 
-void FaBoHumidity_HTS221::configuration()
-{
-   int AV_CONF = HTS221_AVGT_256>>3 | HTS221_AVGH_512;
-   writeI2c(HTS221_AV_CONF, AV_CONF);
+void FaBoHumidity_HTS221::powerOn() {
+  // デバイスパワーオン、データ出力レートを1Hz
+  uint8_t data = 0;
+  data |= HTS221_PD;
+  data |= HTS221_ODR_1HZ;
+  writeI2c(HTS221_CTRL_REG1, data);
 }
 
-int FaBoHumidity_HTS221::getHumidity()
-{
-  uint16_t H0_T0_out, H1_T0_out, H_T_out;
-  uint16_t H0_rh, H1_rh;
-  uint8_t buffer[2];
-  uint32_t humidity;
+void FaBoHumidity_HTS221::configDevice() {
+  // 出力データ解像度
+  uint8_t data = 0;
+  data |= HTS221_AVGH_32;
+  data |= HTS221_AVGT_16;
+  writeI2c(HTS221_AV_CONF, data);
+}
 
-  // H0_rH, H1_rHの読み込み
-  readI2c(HTS221_H0_RH_X2, 1, &buffer[0]);
-  readI2c(HTS221_H1_RH_X2, 1, &buffer[1]);
-  // 取れてくる値がX2なので、1/2にする
-  H0_rh = (buffer[0]&0xff)>>1;
-  H1_rh = (buffer[1]&0xff)>>1;
-  
-  // H0_T0_OUTの読み込み
-  readI2c(HTS221_H0_T0_OUT_L, 1, &buffer[0]);
-  readI2c(HTS221_H0_T0_OUT_H, 1, &buffer[1]);
-  // H,Lを結合する
-  H0_T0_out = (((uint16_t)buffer[1])<<8) | (uint16_t)buffer[0];
-  
-  // H1_T0_OUT 読み込み
-  readI2c(HTS221_H1_T0_OUT_L, 1, &buffer[0]);
-  readI2c(HTS221_H1_T0_OUT_H, 1, &buffer[1]);  
-  // H, Lを結合する
-  H1_T0_out = (((uint16_t)buffer[1])<<8) | (uint16_t)buffer[0];
-  
-  // Read H_T_OUTの読み込み
-  readI2c(HTS221_HR_OUT_L_REG, 1, &buffer[0]);
-  readI2c(HTS221_HR_OUT_H_REG, 1, &buffer[1]);  
-  // H,Lを結合する
-  H_T_out = buffer[1]<<8 | buffer[0];
+void FaBoHumidity_HTS221::readCoef() {
+  // 校正データの読み込み
+  uint8_t data = 0;
+  _H0_rH_x2 = readI2c(HTS221_H0_RH_X2);
+  _H1_rH_x2 = readI2c(HTS221_H1_RH_X2);
+  data = readI2c(HTS221_T1_T0_MSB);
+  _T0_degC_x8  = ( data & 0x3 ) << 8;
+  _T0_degC_x8 |= readI2c(HTS221_T0_DEGC_X8);
+  _T1_degC_x8  = ( data & 0xC ) << 6;
+  _T1_degC_x8 |= readI2c(HTS221_T1_DEGC_X8);
+  _H0_T0_OUT  = readI2c(HTS221_H0_T0_OUT_H) << 8;
+  _H0_T0_OUT |= readI2c(HTS221_H0_T0_OUT_L);
+  _H1_T0_OUT  = readI2c(HTS221_H1_T0_OUT_H) << 8;
+  _H1_T0_OUT |= readI2c(HTS221_H1_T0_OUT_L);
+  _T0_OUT  = readI2c(HTS221_T0_OUT_H) << 8;
+  _T0_OUT |= readI2c(HTS221_T0_OUT_L);
+  _T1_OUT  = readI2c(HTS221_T1_OUT_H) << 8;
+  _T1_OUT |= readI2c(HTS221_T1_OUT_L);
+}
 
-  // RHの計算
-  double rh_dx = ((int16_t)H1_rh - (int16_t)H0_rh)*10;
-  humidity = ((int16_t)H_T_out - (int16_t)H0_T0_out)*rh_dx / ((int16_t)H1_T0_out - (int16_t)H0_T0_out);
-  humidity = (int16_t)(humidity + H0_rh*10);
-  
-  if(humidity > 1000){
-    humidity = 1000;
+double FaBoHumidity_HTS221::getHumidity() {
+  uint8_t data;
+  int16_t H_OUT = 0;
+  double t_H0_rH, t_H1_rH;
+  double humidity = 0.0;
+
+  data = readI2c(HTS221_STATUS_REG);
+  if ( data & HTS221_H_DA ) {
+    H_OUT  = readI2c(HTS221_HUMIDITY_OUT_H) << 8;
+    H_OUT |= readI2c(HTS221_HUMIDITY_OUT_L);
+    // 1/2にする
+    t_H0_rH = _H0_rH_x2 / 2.0;
+    t_H1_rH = _H1_rH_x2 / 2.0;
+    // 線形補間でもとめる
+    humidity = t_H0_rH + ( t_H1_rH - t_H0_rH ) * ( H_OUT - _H0_T0_OUT ) / ( _H1_T0_OUT - _H0_T0_OUT );
   }
   return humidity;
 }
 
-int FaBoHumidity_HTS221::getTemperature()
-{
-  int16_t T0_out, T1_out, T_out, T0_degC_x8_u16, T1_degC_x8_u16;
-  int16_t T0_degC, T1_degC;
-  uint8_t buffer[4];
-  uint32_t tmp32;
+double FaBoHumidity_HTS221::getTemperature() {
+  uint8_t data = 0;
+  uint16_t T_OUT = 0;
+  double t_T0_degC, t_T1_degC;
+  double temperature = 0.0;
 
-  // T0_degC_x8,T1_degC_x8の値の取得
-  readI2c(HTS221_T0_DEGC_X8, 1, &buffer[0]);
-  readI2c(HTS221_T1_DEGC_X8, 1, &buffer[1]);
-  readI2c(HTS221_T0_T1_DEGC_H2, 1, &buffer[2]);
-  
-  // T0_degC_x8,T1_degC_x8のH,Lを結合
-  T0_degC_x8_u16 = (((uint16_t)(buffer[2] & 0x03)) << 8) | ((uint16_t)buffer[0]);
-  T1_degC_x8_u16 = (((uint16_t)(buffer[2] & 0x0C)) << 6) | ((uint16_t)buffer[1]);
-
-  // T0_T1_DEGC_H2の値の取得
-  T0_degC = T0_degC_x8_u16>>3;
-  T1_degC = T1_degC_x8_u16>>3;
-
-  // T0_OUT_L, T0_OUT_H, T1_OUT_L, T1_OUT_Hの取得
-  readI2c(HTS221_T0_OUT_L, 1, &buffer[0]);
-  readI2c(HTS221_T0_OUT_H, 1, &buffer[1]);
-  readI2c(HTS221_T1_OUT_L, 1, &buffer[2]);
-  readI2c(HTS221_T1_OUT_H, 1, &buffer[3]);
-
-  // L,Hの結合
-  T0_out = (((uint16_t)buffer[1])<<8) | (uint16_t)buffer[0];
-  T1_out = (((uint16_t)buffer[3])<<8) | (uint16_t)buffer[2];
-
-  // TEMP_OUT_L, TEMP_OUT_Hの取得
-  readI2c(HTS221_TEMP_OUT_L, 1, &buffer[0]);
-  readI2c(HTS221_TEMP_OUT_H, 1, &buffer[1]);
-
-  // L,Hの結合
-  T_out = (((uint16_t)buffer[1])<<8) | (uint16_t)buffer[0];
-
-  tmp32 = ((uint32_t)(T_out - T0_out)) * ((uint32_t)(T1_degC - T0_degC)*10);
-  return tmp32 /(T1_out - T0_out) + T0_degC*10;
-}
-
-
-// I2Cへの書き込み
-void FaBoHumidity_HTS221::writeI2c(byte register_addr, byte value) {
-  Wire.beginTransmission(HTS221_SLAVE_ADDRESS);
-  Wire.write(register_addr);
-  Wire.write(value);
-  Wire.endTransmission();
-}
-
-// I2Cへの読み込み
-void FaBoHumidity_HTS221::readI2c(byte register_addr, int num, byte *buf) {
-  Wire.beginTransmission(HTS221_SLAVE_ADDRESS);
-  Wire.write(register_addr);
-  Wire.endTransmission(false);
-
-  //Wire.beginTransmission(DEVICE_ADDR);
-  Wire.requestFrom(HTS221_SLAVE_ADDRESS, num);
-
-  int i = 0;
-  while (Wire.available())
-  {
-    buf[i] = Wire.read();
-    i++;
+  data = readI2c(HTS221_STATUS_REG);
+  if ( data & HTS221_T_DA ) {
+    T_OUT  = readI2c(HTS221_TEMP_OUT_H) << 8;
+    T_OUT |= readI2c(HTS221_TEMP_OUT_L);
+    // 1/8にする
+    t_T0_degC = _T0_degC_x8 / 8.0;
+    t_T1_degC = _T1_degC_x8 / 8.0;
+    // 線形補間でもとめる
+    temperature = t_T0_degC + ( t_T1_degC - t_T0_degC ) * ( T_OUT - _T0_OUT ) / ( _T1_OUT - _T0_OUT );
   }
-  //Wire.endTransmission();
+  return temperature;
+}
+
+////////////////////////////////////////////////////////////////
+
+// I2C read
+uint8_t FaBoHumidity_HTS221::readI2c(uint8_t registerAddr) {
+  Wire.beginTransmission(_i2caddr);
+  Wire.write(registerAddr);
+  Wire.endTransmission();
+  Wire.requestFrom(_i2caddr, (uint8_t)1);
+  while(!Wire.available());
+  return Wire.read();
+}
+
+// I2C write
+void FaBoHumidity_HTS221::writeI2c(uint8_t registerAddr, uint8_t data) {
+  Wire.beginTransmission(_i2caddr);
+  Wire.write(registerAddr);
+  Wire.write(data);
+  Wire.endTransmission();
 }

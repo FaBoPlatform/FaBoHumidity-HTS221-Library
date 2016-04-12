@@ -1,31 +1,38 @@
-//
-// FaBo Humidity Brick
-//
-// brick_i2c_humidity
-//
+/*************************************************** 
+ This is an Example for the FaBo Humidity I2C Brick.
+
+  http://fabo.io/208.html
+
+ author:FaBo<info@fabo.io>
+ maintainer:Akira Sasaki<akira@fabo.io>
+
+ Released under APACHE LICENSE, VERSION 2.0
+  http://www.apache.org/licenses/
+ ****************************************************/
 
 #include <Wire.h>
 #include <FaBoHumidity_HTS221.h>
 
 FaBoHumidity_HTS221 faboHumidity;
 
-void setup()
-{
-  Serial.begin(9600); // シリアルの開始デバック用
-   
-  Serial.println("Checking I2C device...");
-  
-  if(faboHumidity.searchDevice()){
-    Serial.println("I am HTS221");
-    faboHumidity.configuration();
-    faboHumidity.powerOn();
+void setup() {
+  Serial.begin(9600);
+  Serial.println("RESET");
+  Serial.println();
+
+  Serial.println("configuring device.");
+
+  if (faboHumidity.begin()) {
+    Serial.println("configured FaBo Humidity Brick");
+  } else {
+    Serial.println("device error");
+    while(1);
   }
 }
 
-void loop()
-{ 
-  double temp = faboHumidity.getTemperature()/10;
-  double humidity = faboHumidity.getHumidity()/10;
+void loop() { 
+  double temp = faboHumidity.getTemperature();
+  double humidity = faboHumidity.getHumidity();
 
   Serial.print(temp);
   Serial.println(" C");
