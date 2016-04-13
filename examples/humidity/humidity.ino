@@ -1,14 +1,15 @@
-/*************************************************** 
- This is an Example for the FaBo Humidity I2C Brick.
+/**
+ @file humidity.ino
+ @brief This is an Example for the FaBo Humidity I2C Brick.
 
-  http://fabo.io/208.html
+   http://fabo.io/208.html
 
- author:FaBo<info@fabo.io>
- maintainer:Akira Sasaki<akira@fabo.io>
+   Released under APACHE LICENSE, VERSION 2.0
 
- Released under APACHE LICENSE, VERSION 2.0
-  http://www.apache.org/licenses/
- ****************************************************/
+   http://www.apache.org/licenses/
+
+ @author FaBo<info@fabo.io>
+*/
 
 #include <Wire.h>
 #include <FaBoHumidity_HTS221.h>

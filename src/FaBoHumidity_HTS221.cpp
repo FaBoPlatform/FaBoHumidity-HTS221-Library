@@ -1,24 +1,33 @@
-/*************************************************** 
- This is a library for the FaBo Humidity I2C Brick.
+/**
+ @file FaBoHumidity_HTS221.cpp
+ @brief This is a library for the FaBo Humidity I2C Brick.
 
-  http://fabo.io/208.html
+   http://fabo.io/208.html
 
- author:FaBo<info@fabo.io>
- maintainer:Akira Sasaki<akira@fabo.io>
+   Released under APACHE LICENSE, VERSION 2.0
 
- Released under APACHE LICENSE, VERSION 2.0
-  http://www.apache.org/licenses/
- ****************************************************/
+   http://www.apache.org/licenses/
+
+ @author FaBo<info@fabo.io>
+*/
 
 #include "FaBoHumidity_HTS221.h"
 
+/**
+ @brief コンストラクタ
+ @param [in] addr I2C Slaveアドレス
+*/
 FaBoHumidity_HTS221::FaBoHumidity_HTS221(uint8_t addr) {
   _i2caddr = addr;
   Wire.begin();
 }
 
+/**
+ @brief デバイス使用開始
+ @retval true 正常終了
+ @retval false デバイスエラー
+*/
 bool FaBoHumidity_HTS221::begin() {
-  // まとめて初期化
   if ( checkDevice() ) {
     powerOn();
     configDevice();
@@ -29,6 +38,11 @@ bool FaBoHumidity_HTS221::begin() {
   }
 }
 
+/**
+ @brief デバイス接続確認
+ @retval true 接続中
+ @retval false デバイス無し
+*/
 bool FaBoHumidity_HTS221::checkDevice() {
   // デバイスが接続されているか確認
   if ( readI2c(HTS221_WHO_AM_I) == HTS221_DEVICE_ID ) {
@@ -38,24 +52,30 @@ bool FaBoHumidity_HTS221::checkDevice() {
   }
 }
 
+/**
+ @brief デバイス起動、データレート設定
+*/
 void FaBoHumidity_HTS221::powerOn() {
-  // デバイスパワーオン、データ出力レートを1Hz
   uint8_t data = 0;
   data |= HTS221_PD;
   data |= HTS221_ODR_1HZ;
   writeI2c(HTS221_CTRL_REG1, data);
 }
 
+/**
+ @brief 出力データ解像度設定
+*/
 void FaBoHumidity_HTS221::configDevice() {
-  // 出力データ解像度
   uint8_t data = 0;
   data |= HTS221_AVGH_32;
   data |= HTS221_AVGT_16;
   writeI2c(HTS221_AV_CONF, data);
 }
 
+/**
+ @brief 校正データの読み込み
+*/
 void FaBoHumidity_HTS221::readCoef() {
-  // 校正データの読み込み
   uint8_t data = 0;
   _H0_rH_x2 = readI2c(HTS221_H0_RH_X2);
   _H1_rH_x2 = readI2c(HTS221_H1_RH_X2);
@@ -74,6 +94,10 @@ void FaBoHumidity_HTS221::readCoef() {
   _T1_OUT |= readI2c(HTS221_T1_OUT_L);
 }
 
+/**
+ @brief 湿度出力
+ @return 湿度(Rh%)
+*/
 double FaBoHumidity_HTS221::getHumidity() {
   uint8_t data;
   int16_t H_OUT = 0;
@@ -93,6 +117,10 @@ double FaBoHumidity_HTS221::getHumidity() {
   return humidity;
 }
 
+/**
+ @brief 温度出力
+ @return 温度(Deg C)
+*/
 double FaBoHumidity_HTS221::getTemperature() {
   uint8_t data = 0;
   uint16_t T_OUT = 0;
@@ -114,7 +142,11 @@ double FaBoHumidity_HTS221::getTemperature() {
 
 ////////////////////////////////////////////////////////////////
 
-// I2C read
+/**
+ @brief I2C読込
+ @param [in] registerAddr レジスタアドレス
+ @return 読込データ
+*/
 uint8_t FaBoHumidity_HTS221::readI2c(uint8_t registerAddr) {
   Wire.beginTransmission(_i2caddr);
   Wire.write(registerAddr);
@@ -124,7 +156,11 @@ uint8_t FaBoHumidity_HTS221::readI2c(uint8_t registerAddr) {
   return Wire.read();
 }
 
-// I2C write
+/**
+ @brief I2C書込
+ @param [in] registerAddr レジスタアドレス
+ @param [in] data 書込データ
+*/
 void FaBoHumidity_HTS221::writeI2c(uint8_t registerAddr, uint8_t data) {
   Wire.beginTransmission(_i2caddr);
   Wire.write(registerAddr);
